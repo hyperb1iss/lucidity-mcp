@@ -123,7 +123,9 @@ def run_sse_server(config: dict[str, Any]) -> None:
         timeout_graceful_shutdown=0,  # Shutdown immediately
     )
     # Create server with the Config object
-    uvicorn.Server(uvicorn_config)
+    server = uvicorn.Server(uvicorn_config)
+    # Actually run the server
+    server.run()
 
 
 def run_stdio_server() -> None:
