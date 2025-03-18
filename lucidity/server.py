@@ -45,10 +45,10 @@ def load_environment() -> None:
         env_path = script_dir / ".env"
 
     if env_path.exists():
-        logger.info("Loading environment from %s", env_path)
+        logger.debug("Loading environment from %s", env_path)
         load_dotenv(env_path)
     else:
-        logger.info("No .env file found, using system environment variables")
+        logger.debug("No .env file found, using system environment variables")
 
 
 def run_sse_server(config: dict[str, Any]) -> None:
@@ -129,12 +129,12 @@ def run_sse_server(config: dict[str, Any]) -> None:
 def run_stdio_server() -> None:
     """Run the server with stdio transport."""
     # Use stdio transport for terminal use
-    logger.info("🔌 Using stdio transport for terminal interaction")
+    logger.debug("🔌 Using stdio transport for terminal interaction")
 
     async def arun() -> None:
         async with stdio_server() as streams:
             # Log that we're ready to accept commands
-            logger.info("🎧 Server ready, waiting for commands...")
+            logger.debug("🎧 Server ready, waiting for commands...")
             # Add noqa for private member access that's necessary for MCP
             await mcp._mcp_server.run(
                 streams[0],
@@ -181,6 +181,10 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Enable verbose logging for HTTP requests",
     )
+    parser.add_argument(
+        "--log-file",
+        help="Path to log file (required for stdio transport if logs enabled)",
+    )
     return parser.parse_args()
 
 
@@ -194,18 +198,45 @@ def main() -> int:
 
     # Set log level based on arguments
     log_level = args.log_level if not args.debug else "DEBUG"
-    handler = RichHandler(rich_tracebacks=True, markup=True)
-    setup_logging(log_level, args.debug or args.verbose, handler)
+
+    # Determine logging mode:
+    # 1. Normal console logging (for sse or non-terminal use)
+    # 2. File-only logging (for stdio with log file)
+    # 3. Stderr-only logging (for stdio without log file)
+    console_enabled = True
+    stderr_only = False
+
+    if args.transport == "stdio":
+        if args.log_file:
+            # For stdio with a log file: disable console, log to file
+            console_enabled = False
+        else:
+            # For stdio without a log file: use stderr for warnings/errors only
+            console_enabled = False
+            stderr_only = True
+
+    # Set up logging
+    if console_enabled:
+        # Normal rich console logging
+        handler = RichHandler(rich_tracebacks=True, markup=True)
+        setup_logging(log_level, args.debug or args.verbose, handler, args.log_file, console_enabled, stderr_only)
+    else:
+        # Either file-only or stderr-only logging
+        setup_logging(log_level, args.debug or args.verbose, None, args.log_file, console_enabled, stderr_only)
 
     # Setup asyncio exception handler
     setup_asyncio_exception_handler()
+
+    # We no longer need this warning since we now handle stderr
+    # logging properly for stdio mode without interfering with stdout
 
     try:
         # Ensure environment variables are loaded
         load_environment()
 
-        # Log startup message
-        logger.info("✨ Lucidity MCP Server - AI powered code review tool")
+        # Log startup message - only if we have full console logging or a log file
+        if console_enabled or args.log_file:
+            logger.info("✨ Lucidity MCP Server - AI powered code review tool")
 
         # Prepare server configuration
         config = {

@@ -51,7 +51,7 @@ Issues = "https://github.com/hyperbliss/lucidity/issues"
 Documentation = "https://github.com/hyperbliss/lucidity#readme"
 
 [project.scripts]
-lucidity = "lucidity.server:main"
+lucidity-mcp = "lucidity.server:main"
 
 [build-system]
 requires = ["hatchling"]

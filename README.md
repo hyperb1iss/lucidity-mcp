@@ -48,13 +48,27 @@ lucidity --transport sse --host 127.0.0.1 --port 6969
 
 # Run with debug logging
 lucidity --debug
+
+# Run with file logging
+lucidity --log-file lucidity.log
 ```
+
+### Logging behavior
+
+Lucidity handles logging differently depending on the transport:
+
+- **SSE transport**: Full console logging is enabled
+- **Stdio transport with --log-file**: All logs go to the file, console is disabled
+- **Stdio transport without --log-file**: Only warnings and errors go to stderr, info logs are disabled
+
+This behavior ensures that stdio communication isn't broken by logs appearing on stdout.
 
 ### Command-line options
 
 ```
 usage: lucidity [-h] [--debug] [--host HOST] [--port PORT] [--transport {stdio,sse}]
                 [--log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}] [--verbose]
+                [--log-file LOG_FILE]
 
 Lucidity MCP Server
 
@@ -68,6 +82,7 @@ options:
   --log-level {DEBUG,INFO,WARNING,ERROR,CRITICAL}
                         Set the logging level
   --verbose             Enable verbose logging for HTTP requests
+  --log-file LOG_FILE   Path to log file (required for stdio transport if logs enabled)
 ```
 
 ## Integration with AI Assistants
