@@ -4,16 +4,14 @@ Lucidity prompts module.
 This module defines the prompt templates used for code quality analysis.
 """
 
-from typing import Dict, List, Optional
-
 from .context import mcp
 
 # Define the base prompt for code analysis
 BASE_ANALYSIS_PROMPT = """
 # Code Quality Analysis
 
-You are performing a comprehensive code quality analysis on the provided code. 
-Your task is to identify potential quality issues across multiple dimensions and provide 
+You are performing a comprehensive code quality analysis on the provided code.
+Your task is to identify potential quality issues across multiple dimensions and provide
 constructive feedback to improve the code.
 
 ## Code to Analyze
@@ -71,7 +69,6 @@ QUALITY_DIMENSIONS = {
     - Functions/methods that are too long or have too many parameters
     - Nesting levels that are too deep
     """,
-    
     "abstraction": """
     **Poor Abstractions**
     - Inappropriate use of design patterns
@@ -80,7 +77,6 @@ QUALITY_DIMENSIONS = {
     - Overly generic abstractions that add complexity
     - Unclear separation of concerns
     """,
-    
     "deletion": """
     **Unintended Code Deletion**
     - Critical functionality removed without replacement
@@ -89,7 +85,6 @@ QUALITY_DIMENSIONS = {
     - Removed error handling or validation
     - Missing edge case handling present in original code
     """,
-    
     "hallucination": """
     **Hallucinated Components**
     - References to non-existent functions, classes, or modules
@@ -98,7 +93,6 @@ QUALITY_DIMENSIONS = {
     - References to frameworks or patterns not used in the project
     - Creation of interfaces that don't align with the codebase
     """,
-    
     "style": """
     **Style Inconsistencies**
     - Deviation from project coding standards
@@ -107,7 +101,6 @@ QUALITY_DIMENSIONS = {
     - Inconsistent comment styles or documentation
     - Mixing of different programming paradigms
     """,
-    
     "security": """
     **Security Vulnerabilities**
     - Injection vulnerabilities (SQL, Command, etc.)
@@ -116,7 +109,6 @@ QUALITY_DIMENSIONS = {
     - Exposure of sensitive information
     - Unsafe dependencies or API usage
     """,
-    
     "performance": """
     **Performance Issues**
     - Inefficient algorithms or data structures
@@ -125,7 +117,6 @@ QUALITY_DIMENSIONS = {
     - Excessive network or disk operations
     - Blocking operations in asynchronous code
     """,
-    
     "duplication": """
     **Code Duplication**
     - Repeated logic or functionality
@@ -134,7 +125,6 @@ QUALITY_DIMENSIONS = {
     - Redundant validation or error handling
     - Parallel hierarchies or structures
     """,
-    
     "error_handling": """
     **Incomplete Error Handling**
     - Missing try-catch blocks for risky operations
@@ -143,7 +133,6 @@ QUALITY_DIMENSIONS = {
     - Unclear error messages or codes
     - Inconsistent error recovery strategies
     """,
-    
     "testing": """
     **Test Coverage Gaps**
     - Missing unit tests for critical functionality
@@ -151,49 +140,47 @@ QUALITY_DIMENSIONS = {
     - Brittle tests that make inappropriate assumptions
     - Missing integration or system tests
     - Tests that don't verify actual requirements
-    """
+    """,
 }
 
+
 # Format dimensions for inclusion in the prompt
-def format_dimensions(selected_dimensions: Optional[List[str]] = None) -> str:
+def format_dimensions(selected_dimensions: list[str] | None = None) -> str:
     """Format selected dimensions for inclusion in the prompt.
-    
+
     Args:
         selected_dimensions: List of dimension keys to include, or None for all
-        
+
     Returns:
         Formatted dimensions string for the prompt
     """
     dimensions = selected_dimensions or list(QUALITY_DIMENSIONS.keys())
     formatted = ""
-    
+
     for dim in dimensions:
         if dim in QUALITY_DIMENSIONS:
             formatted += QUALITY_DIMENSIONS[dim] + "\n"
-    
+
     return formatted
 
 
 def generate_analysis_prompt(
-    code: str,
-    language: str,
-    original_code: Optional[str] = None,
-    selected_dimensions: Optional[List[str]] = None
+    code: str, language: str, original_code: str | None = None, selected_dimensions: list[str] | None = None
 ) -> str:
     """Generate a complete analysis prompt for the given code.
-    
+
     Args:
         code: The code to analyze
         language: The programming language of the code
         original_code: The original code (if performing diff analysis)
         selected_dimensions: Specific dimensions to analyze, or None for all
-        
+
     Returns:
         Complete analysis prompt
     """
     # Format the dimensions section
     dimensions_text = format_dimensions(selected_dimensions)
-    
+
     # Generate diff section if original code is provided
     diff_section = ""
     if original_code:
@@ -207,34 +194,26 @@ def generate_analysis_prompt(
 When analyzing, pay particular attention to changes between the original and new code.
 Identify any regressions, unintended modifications, or improvements.
 """
-    
+
     # Build the complete prompt
-    prompt = BASE_ANALYSIS_PROMPT.format(
-        language=language,
-        code=code,
-        diff_section=diff_section,
-        dimensions=dimensions_text
+    return BASE_ANALYSIS_PROMPT.format(
+        language=language, code=code, diff_section=diff_section, dimensions=dimensions_text
     )
-    
-    return prompt
 
 
-@mcp.prompt("analyze_code")
+@mcp.prompt("analyze_code")  # type: ignore
 def analyze_code_prompt(
-    code: str,
-    language: str,
-    original_code: Optional[str] = None,
-    focus_areas: Optional[List[str]] = None
+    code: str, language: str, original_code: str | None = None, focus_areas: list[str] | None = None
 ) -> str:
     """Generate a prompt for analyzing code quality.
-    
+
     Args:
         code: The code to analyze
         language: The programming language of the code
         original_code: The original code for comparison (optional)
         focus_areas: Specific quality dimensions to focus on (optional)
-        
+
     Returns:
         A formatted prompt for code analysis
     """
-    return generate_analysis_prompt(code, language, original_code, focus_areas) 
+    return generate_analysis_prompt(code, language, original_code, focus_areas)

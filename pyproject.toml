@@ -232,6 +232,8 @@ section-order = [
 # Allow accessing private members in server.py for MCP server access
 "lucidity/server.py" = ["BLE001", "SLF001"]
 
+# Run git commands
+"lucidity/tools/code_analysis.py" = ["S603", "S607"]
 # More relaxed rules for tests
 "tests/**/*.py" = [
     "ARG001",  # Unused function arguments (common for fixtures)

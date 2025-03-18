@@ -2,14 +2,9 @@
 Tests for tools module.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from lucidity.tools.code_analysis import (
-    detect_language,
-    extract_code_from_diff,
-    parse_git_diff
-)
+from lucidity.tools.code_analysis import detect_language, extract_code_from_diff, parse_git_diff
 
 
 def test_detect_language():
@@ -32,16 +27,16 @@ index abc123..def456 100644
 -    print("Hello")
 +    print("Hello, world!")
 +    return True
- 
+
  hello()
 """
-    
+
     result = parse_git_diff(diff_content)
-    
+
     assert "example.py" in result
     assert result["example.py"]["status"] == "modified"
-    assert "-    print(\"Hello\")" in result["example.py"]["content"]
-    assert "+    print(\"Hello, world!\")" in result["example.py"]["content"]
+    assert '-    print("Hello")' in result["example.py"]["content"]
+    assert '+    print("Hello, world!")' in result["example.py"]["content"]
 
 
 def test_extract_code_from_diff():
@@ -53,18 +48,18 @@ def test_extract_code_from_diff():
 -    print("Hello")
 +    print("Hello, world!")
 +    return True
- 
- hello()"""
+
+ hello()""",
     }
-    
+
     original_code, modified_code = extract_code_from_diff(diff_info)
-    
+
     assert "def hello():" in original_code
-    assert "print(\"Hello\")" in original_code
+    assert 'print("Hello")' in original_code
     assert "return True" not in original_code
-    
+
     assert "def hello():" in modified_code
-    assert "print(\"Hello, world!\")" in modified_code
+    assert 'print("Hello, world!")' in modified_code
     assert "return True" in modified_code
 
 
@@ -72,23 +67,24 @@ def test_extract_code_from_diff():
 def test_get_git_diff(mock_run):
     """Test getting git diff from repository."""
     from lucidity.tools.code_analysis import get_git_diff
-    
+
     # Mock the subprocess.run calls
     mock_process = MagicMock()
     mock_process.stdout = "/path/to/repo"
     mock_run.return_value = mock_process
-    
+
     # Patch os functions
-    with patch("lucidity.tools.code_analysis.os.getcwd") as mock_getcwd, \
-         patch("lucidity.tools.code_analysis.os.chdir") as mock_chdir:
-        
+    with (
+        patch("lucidity.tools.code_analysis.os.getcwd") as mock_getcwd,
+        patch("lucidity.tools.code_analysis.os.chdir") as mock_chdir,
+    ):
         mock_getcwd.return_value = "/current/dir"
-        
+
         # Call the function
         get_git_diff("example.py")
-        
+
         # Verify correct commands were run
         assert mock_run.call_count >= 3
         # Check that chdir was called to change to git root and back
         mock_chdir.assert_any_call("/path/to/repo")
-        mock_chdir.assert_any_call("/current/dir") 
+        mock_chdir.assert_any_call("/current/dir")

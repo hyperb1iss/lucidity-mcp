@@ -12,7 +12,7 @@ import sys
 from typing import Any, cast
 
 import anyio
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # type: ignore
 from mcp.server.sse import SseServerTransport
 from mcp.server.stdio import stdio_server
 from rich.logging import RichHandler
@@ -24,8 +24,7 @@ from starlette.routing import Mount, Route
 import uvicorn
 
 # Import resources and tools modules to register decorators
-from . import prompts  # noqa: F401
-from .tools import *  # noqa: F401, F403
+from . import prompts, tools  # noqa: F401
 from .context import mcp
 from .log import (
     handle_taskgroup_exception,
@@ -36,7 +35,7 @@ from .log import (
 )
 
 
-def load_environment():
+def load_environment() -> None:
     """Load environment variables from .env file."""
     # Look for .env in current directory and parent directories
     env_path = Path(".env")
@@ -124,7 +123,7 @@ def run_sse_server(config: dict[str, Any]) -> None:
         timeout_graceful_shutdown=0,  # Shutdown immediately
     )
     # Create server with the Config object
-    server = uvicorn.Server(uvicorn_config)
+    uvicorn.Server(uvicorn_config)
 
 
 def run_stdio_server() -> None:
@@ -146,7 +145,7 @@ def run_stdio_server() -> None:
     anyio.run(arun)
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """Parse command line arguments.
 
     Returns:
@@ -185,7 +184,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> int:
     """Main entry point for the Lucidity MCP server."""
     # Parse arguments
     args = parse_args()
