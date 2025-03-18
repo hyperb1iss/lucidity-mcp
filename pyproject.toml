@@ -1,0 +1,317 @@
+[project]
+name = "lucidity-mcp"
+version = "0.1.0"
+description = "An AI powered code review tool for MCP"
+readme = "README.md"
+requires-python = ">=3.13"
+license = { file = "LICENSE" }
+authors = [{ name = "Stefanie Jane", email = "stef@hyperbliss.tech" }]
+keywords = ["mcp", "android", "ai", "llm", "claude"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+# Dependencies organized by category
+dependencies = [
+    "dotenv>=0.9.9",
+    "httpx>=0.28.1",
+    # Core MCP protocol
+    "mcp[cli]>=1.4.1",
+    # UI and display
+    "rich>=13.9.4",
+    "sse-starlette>=2.2.1",
+    "starlette>=0.36.3",
+    "uvicorn>=0.30.0",
+    "anyio>=4.8.0",
+    "types-pyyaml>=6.0.12.20241230",
+    "types-pygments>=2.19.0.20250305",
+    "types-colorama>=0.4.15.20240311",
+    "types-pexpect>=4.9.0.20241208",
+    "types-setuptools>=76.0.0.20250313",
+]
+
+[dependency-groups]
+dev = [
+    # Testing
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.25.3",
+    "pytest-cov>=6.0.0",
+    # Linting and type checking
+    "mypy>=1.15.0",
+    "pylint>=3.3.5",
+    "ruff>=0.11.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/hyperbliss/lucidity"
+Issues = "https://github.com/hyperbliss/lucidity/issues"
+Documentation = "https://github.com/hyperbliss/lucidity#readme"
+
+[project.scripts]
+lucidity = "lucidity.server:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["lucidity"]
+
+# Testing configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = ["-v", "--tb=short"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+# Type checking configuration
+[tool.mypy]
+python_version = "3.13"
+# Basic type checking
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+# Enhanced type checking
+disallow_any_generics = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+check_untyped_defs = true
+
+# Warnings as errors for critical issues
+error_summary = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+
+# Strict equality checking
+strict_equality = true
+
+# Import discovery
+namespace_packages = true
+explicit_package_bases = true
+
+# Error reporting
+show_error_context = true
+show_column_numbers = true
+pretty = true
+
+# Third-party modules without type stubs
+[[tool.mypy.overrides]]
+module = ["mcp.*", "starlette.*", "uvicorn.*", "sse_starlette.*"]
+ignore_missing_imports = true
+
+# Test files can be less strict
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = false
+
+# Core modules should be very strict
+[[tool.mypy.overrides]]
+module = ["droidmind.core.*"]
+disallow_any_generics = true
+disallow_any_explicit = true
+warn_unreachable = true
+
+# Code formatting and linting configuration
+[tool.ruff]
+# General settings
+line-length = 120
+target-version = "py313"
+src = ["droidmind", "tests"]
+extend-exclude = [".venv", "docs"]
+
+[tool.ruff.lint]
+# Rules to enable
+select = [
+    # Core rules
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "C",   # flake8-comprehensions
+    "B",   # flake8-bugbear
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "RUF", # ruff-specific rules
+    "PT",  # pytest style
+    "SIM", # simplify
+
+    # Additional valuable rules for a server application
+    "ASYNC", # async/await best practices
+    "BLE",   # blind except handling
+    "DTZ",   # datetime handling
+    "G",     # logging format string issues
+    "ICN",   # import conventions
+    "PGH",   # pygrep hooks
+    "PIE",   # misc. linting
+    "PL",    # pylint rules ported to ruff
+    "RET",   # return value consistency
+    "RSE",   # raise statement formatting
+    "S",     # bandit (security) - important for command execution!
+    "SLF",   # private member access
+    "TRY",   # try-except best practices
+    "COM",   # trailing comma enforcement (except COM812 which conflicts with formatter)
+    "ERA",   # eradicate (commented out code)
+    "T20",   # print statements
+    "ARG",   # unused arguments
+]
+
+# Rules to ignore
+ignore = [
+    # Complexity - handled by pylint
+    "C901",    # Function is too complex
+    "PLR0911", # Too many return statements
+    "PLR0912", # Too many branches
+    "PLR0913", # Too many arguments
+    "PLR0915", # Too many statements
+    "PLR2004", # Magic value in comparison
+
+    # Stylistic preferences
+    "RUF012", # Mutable class attributes should be annotated with typing.ClassVar
+
+    # Noise reduction - warnings that often produce false positives
+    "PLC0414", # Import alias does not rename variable
+    "PLR0904", # Too many public methods
+    "PLW0603", # Global statement usage
+    "PLW2901", # Outer loop variable overwritten
+    "PT011",   # Too broad pytest.raises without match
+    "SIM102",  # Nested if-statements (sometimes better for readability)
+    "SIM108",  # Use ternary instead of if-else (often less readable)
+    "TRY003",  # Avoid long messages in exceptions
+
+    # User-requested suppressions
+    "G004",   # Don't warn about f-strings in logging
+    "PGH003", # Don't warn about unspecific # type: ignore comments
+    "RET502", # Don't warn about implicit return None
+    "RET503", # Don't warn about missing explicit return
+    "RET505", # Don't warn about elif after return
+    "TRY300", # Don't suggest moving return to else block
+    "TRY301", # Don't suggest abstracting raise to inner function
+    "TRY401", # Don't warn about redundant exception in logging.exception
+
+    # Security exceptions that make sense for this project
+    "S101", # Use of assert detected (fine for tests)
+
+    # Rule that conflicts with the formatter
+    "COM812", # Missing trailing comma in collection of items
+]
+
+# Import organization settings
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+known-first-party = ["lucidity"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder",
+]
+
+# File-specific rule adjustments
+[tool.ruff.lint.per-file-ignores]
+# Ignore unused imports in __init__ files
+"__init__.py" = ["F401", "E402"]
+
+# Allow catching blind exceptions in prompts, resources, and tools 
+"lucidity/prompts.py" = ["BLE001", "ARG001"]
+"lucidity/resources.py" = ["BLE001", "ARG001"]
+"lucidity/tools/*.py" = ["BLE001", "ARG001"]
+
+# Allow accessing private members in server.py for MCP server access
+"lucidity/server.py" = ["BLE001", "SLF001"]
+
+# More relaxed rules for tests
+"tests/**/*.py" = [
+    "ARG001",  # Unused function arguments (common for fixtures)
+    "ARG002",  # Unused function arguments (common for fixtures)
+    "ARG005",  # Unused lambda arguments (common for fixtures)
+    "E501",    # Allow longer lines in tests (assertions can get verbose)
+    "PIE790",  # Allow unnecessary 'pass' statements in mocks
+    "PLR2004", # Allow magic numbers in tests
+    "PT018",   # Allow complex assertions (common in tests to check multiple conditions)
+    "RET504",  # Allow unnecessary assignment before return (clearer in tests)
+    "S101",    # Allow asserts in tests
+    "S105",    # Allow hardcoded passwords in variable assignments (it's just test data!)
+    "S106",    # Allow hardcoded passwords as arguments (it's just test data!)
+    "S108",    # Ignore insecure usage of temporary files
+    "SLF001",  # Allow private member access in tests
+    "BLE001",  # Allow catching blind exceptions in tests
+]
+
+# Format settings for consistency
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+docstring-code-format = true
+docstring-code-line-length = 80
+
+# Pylint configuration - only for things Ruff can't handle
+[tool.pylint]
+py-version = "3.13"
+jobs = 2
+max-line-length = 120
+disable = [
+    # Covered by Ruff
+    "bad-indentation",
+    "line-too-long",
+    "missing-final-newline",
+    "trailing-whitespace",
+    "unnecessary-semicolon",
+    "missing-docstring",
+    "invalid-name",
+    "abstract-class-instantiated",
+    "abstract-method",
+    "arguments-differ",
+    "assignment-from-none",
+    "attribute-defined-outside-init",
+    "protected-access",
+    "signature-differs",
+    "too-few-public-methods",
+    "import-error",
+    "no-member",
+    "no-name-in-module",
+    "unused-import",
+    "redefined-outer-name",
+    "unused-argument",
+    "unused-variable",
+    "wrong-import-position",
+    "import-outside-toplevel",
+    "too-many-positional-arguments",
+    "fixme",
+
+    # Additional suppressions for practicality
+    "broad-except",
+]
+
+# Enable only the high-value checks that Ruff doesn't cover
+enable = [
+    "use-symbolic-message-instead",
+    "useless-suppression",
+    "duplicate-code",
+]
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "id", "fd", "_"]
+
+[tool.pylint.design]
+max-parents = 15
+max-returns = 10
+max-branches = 20
+max-statements = 60
+max-attributes = 20
+max-locals = 25
+max-args = 10
+max-nested-blocks = 8
