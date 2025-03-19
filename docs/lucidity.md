@@ -31,6 +31,8 @@ Lucidity bridges this gap by providing AI assistants with a specialized tool tha
 - **MCP Integration**: Seamless integration with Claude and other MCP-compatible AI assistants
 - **Lightweight Implementation**: Simple server design with minimal dependencies
 - **Extensible Framework**: Easy to add new issue types or refine analysis criteria
+- **Flexible Transport**: Supports both stdio for terminal-based interaction and SSE for network-based communication
+- **Git-Aware Analysis**: Analyzes changes directly from git diff, making it ideal for pre-commit reviews
 
 ## Target Audience
 
@@ -47,10 +49,28 @@ Lucidity bridges this gap by providing AI assistants with a specialized tool tha
 3. **Learning Tool**: Help developers understand common pitfalls in AI-generated code
 4. **Continuous Improvement**: Track common issues to refine prompting strategies and workflows
 5. **Cross-Language Standardization**: Apply consistent quality criteria across different programming languages
+6. **CI/CD Integration**: Add Lucidity checks to your continuous integration pipeline to maintain code quality standards
 
 ## Technical Overview
 
 Lucidity is built on the Model Context Protocol (MCP), allowing it to integrate with compatible AI assistants like Claude. When an assistant invokes Lucidity's analysis tool, it receives a structured prompt that guides its analysis process, resulting in consistent, high-quality feedback without requiring complex backend analysis algorithms.
+
+### Architecture
+
+- **FastMCP Core**: Built on the FastMCP SDK for robust MCP protocol implementation
+- **Dual Transport Layer**:
+  - **stdio transport** for terminal-based interaction
+  - **SSE transport** for network-based communication
+- **Git Integration**: Extracts and processes changes directly from git diffs
+- **Language Detection**: Automatically detects programming languages for context-aware analysis
+- **Prompt Engine**: Generates sophisticated analysis prompts tailored to specific code contexts
+
+### Technical Requirements
+
+- Python 3.10+
+- Git repository access
+- Compatible MCP client (Claude, etc.)
+- Optional: Web server capability for SSE transport
 
 ## Benefits
 
@@ -62,6 +82,3 @@ Lucidity is built on the Model Context Protocol (MCP), allowing it to integrate 
 - **Integration**: Fits into existing development workflows with MCP-compatible assistants
 - **Lightweight**: Minimal system requirements and dependencies
 
----
-
-Lucidity doesn't just analyze code; it illuminates the path to better AI-assisted development practices, bringing clarity to the collaboration between human developers and AI assistants.
