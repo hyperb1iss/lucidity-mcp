@@ -209,7 +209,7 @@ def detect_language(filename: str) -> str:
     return extension_map.get(ext.lower(), "text")
 
 
-@mcp.tool("analyze_code_quality")  # type: ignore
+@mcp.tool("analyze_code_quality")
 def analyze_code_quality(
     workspace_root: str = "", path: str = "", focus_areas: list[str] | None = None
 ) -> dict[str, Any]:
@@ -226,8 +226,6 @@ def analyze_code_quality(
     Returns:
         Analysis results including issues found and recommendations
     """
-    if focus_areas is None:
-        focus_areas = []
     if focus_areas is None:
         focus_areas = []
     logger.info("Starting code quality analysis%s in workspace %s", f" for {path}" if path else "", workspace_root)

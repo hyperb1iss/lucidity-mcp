@@ -201,7 +201,7 @@ Identify any regressions, unintended modifications, or improvements.
     )
 
 
-@mcp.prompt("analyze_code")  # type: ignore
+@mcp.prompt("analyze_code")
 def analyze_code_prompt(
     code: str, language: str, original_code: str | None = None, focus_areas: list[str] | None = None
 ) -> str:

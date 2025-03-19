@@ -1,3 +1,4 @@
+from builtins import BaseExceptionGroup
 import logging
 from logging import FileHandler, Handler, StreamHandler
 import sys
@@ -153,15 +154,3 @@ def setup_global_exception_handler() -> None:
 
     # Install the global exception handler
     sys.excepthook = global_exception_handler
-
-
-# Import for exception handling
-try:
-    from exceptiongroup import BaseExceptionGroup  # type: ignore
-except ImportError:
-    # Python 3.11+ has built-in support
-    try:
-        from builtins import BaseExceptionGroup  # type: ignore
-    except ImportError:
-        # Fallback for earlier Python versions
-        BaseExceptionGroup = Exception  # type: ignore

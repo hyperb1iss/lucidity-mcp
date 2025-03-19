@@ -12,7 +12,7 @@ import sys
 from typing import Any, cast
 
 import anyio
-from dotenv import load_dotenv  # type: ignore
+from dotenv import load_dotenv
 from mcp.server.sse import SseServerTransport
 from mcp.server.stdio import stdio_server
 from rich.logging import RichHandler
