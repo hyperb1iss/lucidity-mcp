@@ -312,4 +312,34 @@ def analyze_code_quality(
             analysis_results[filename] = {"status": "error", "message": f"Error analyzing file: {e!s}"}
 
     logger.info("Code analysis complete - processed %d files", len(analysis_results))
-    return {"status": "success", "file_count": len(analysis_results), "results": analysis_results}
+
+    # Return results with instructions for AI analysis
+    return {
+        "status": "success",
+        "file_count": len(analysis_results),
+        "results": analysis_results,
+        "instructions": """
+Please analyze the code changes using the provided analysis prompt(s).
+For each file in the results:
+
+1. Read the analysis_prompt which contains:
+   - The code to analyze
+   - Original code (if available)
+   - Analysis dimensions to consider
+   - Detailed instructions for analysis
+
+2. Follow the prompt's format to provide:
+   - Analysis for each relevant dimension
+   - Severity levels for issues found
+   - Line-specific explanations
+   - Concrete improvement recommendations
+   - Final summary of critical issues
+
+3. After analyzing all files, provide:
+   - Overall assessment of code quality
+   - Prioritized list of improvements
+   - Any patterns or systemic issues found
+
+Your analysis should be thorough but focused on actionable improvements.
+""",
+    }
