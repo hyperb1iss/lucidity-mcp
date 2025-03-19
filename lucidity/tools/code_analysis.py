@@ -79,6 +79,61 @@ def get_git_diff(workspace_root: str, path: str | None = None) -> tuple[str, str
         return "", ""
 
 
+def get_changed_files(workspace_root: str) -> list[str]:
+    """Get a list of all modified files (both staged and unstaged).
+
+    Args:
+        workspace_root: The root directory of the workspace/git repository
+
+    Returns:
+        List of modified file paths
+    """
+    logger.debug("Getting changed files in workspace %s", workspace_root)
+
+    try:
+        if not os.path.exists(os.path.join(workspace_root, ".git")):
+            logger.error("No .git directory found in workspace root: %s", workspace_root)
+            return []
+
+        # Store current directory
+        current_dir = os.getcwd()
+
+        # Change to workspace root
+        os.chdir(workspace_root)
+
+        try:
+            # Get unstaged modified files
+            unstaged_files = (
+                subprocess.run(["git", "diff", "--name-only"], capture_output=True, text=True, check=True)
+                .stdout.strip()
+                .split("\n")
+            )
+
+            # Get staged modified files
+            staged_files = (
+                subprocess.run(["git", "diff", "--cached", "--name-only"], capture_output=True, text=True, check=True)
+                .stdout.strip()
+                .split("\n")
+            )
+
+            # Combine and remove empty entries
+            all_files = list(set(filter(None, unstaged_files + staged_files)))
+            logger.debug("Found %d changed files", len(all_files))
+
+            return all_files
+
+        finally:
+            # Change back to the original directory
+            os.chdir(current_dir)
+
+    except subprocess.CalledProcessError as e:
+        logger.error("Error getting changed files: %s (output: %s)", e, e.output)
+        return []
+    except Exception as e:
+        logger.error("Unexpected error getting changed files: %s", e)
+        return []
+
+
 def parse_git_diff(diff_content: str) -> dict[str, dict[str, Any]]:
     """Parse git diff content into a structured format.
 
@@ -91,6 +146,7 @@ def parse_git_diff(diff_content: str) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     current_file: str | None = None
     current_content: list[str] = []
+    current_header: list[str] = []
 
     lines = diff_content.split("\n")
     i = 0
@@ -103,21 +159,33 @@ def parse_git_diff(diff_content: str) -> dict[str, dict[str, Any]]:
             # Save previous file content if any
             if current_file is not None:
                 result[current_file]["content"] = "\n".join(current_content)
+                result[current_file]["header"] = "\n".join(current_header)
                 current_content = []
+                current_header = []
 
             # Extract filename from diff header
             parts = line.split(" ")
-            if len(parts) >= 3:
-                file_path = parts[2][2:]  # Remove 'a/' prefix
+            if len(parts) >= 4:
+                # Extract the canonical filename (b/ version)
+                file_path = parts[3][2:]  # Remove 'b/' prefix
                 current_file = file_path
-                result[current_file] = {"status": "modified", "content": "", "original_content": ""}
+                result[current_file] = {
+                    "status": "modified",
+                    "content": "",
+                    "original_content": "",
+                    "header": line,
+                    "raw_diff": line + "\n",
+                }
+                current_header.append(line)
 
-            # Skip file metadata lines
+            # Skip file metadata lines and collect headers
             while i + 1 < len(lines) and not lines[i + 1].startswith("@@"):
                 i += 1
-
-                # Check for file status
                 if i < len(lines) and current_file is not None:
+                    current_header.append(lines[i])
+                    result[current_file]["raw_diff"] += lines[i] + "\n"
+
+                    # Check for file status
                     if lines[i].startswith("new file"):
                         result[current_file]["status"] = "added"
                     elif lines[i].startswith("deleted file"):
@@ -125,15 +193,22 @@ def parse_git_diff(diff_content: str) -> dict[str, dict[str, Any]]:
                     elif lines[i].startswith("rename from"):
                         result[current_file]["status"] = "renamed"
 
+        # Collect diff hunk headers
+        elif current_file is not None and line.startswith("@@"):
+            current_header.append(line)
+            result[current_file]["raw_diff"] += line + "\n"
+
         # Collect diff content
         elif current_file is not None and (line.startswith(("+", "-", " "))):
             current_content.append(line)
+            result[current_file]["raw_diff"] += line + "\n"
 
         i += 1
 
     # Save the last file content
     if current_file is not None and current_content:
         result[current_file]["content"] = "\n".join(current_content)
+        result[current_file]["header"] = "\n".join(current_header)
 
     return result
 
@@ -209,28 +284,25 @@ def detect_language(filename: str) -> str:
     return extension_map.get(ext.lower(), "text")
 
 
-@mcp.tool("analyze_code_quality")
-def analyze_code_quality(
-    workspace_root: str = "", path: str = "", focus_areas: list[str] | None = None
-) -> dict[str, Any]:
-    """Analyze code quality using AI.
+@mcp.tool("analyze_changes")
+def analyze_changes(workspace_root: str = "", path: str = "") -> dict[str, Any]:
+    """Prepare git changes for analysis through MCP.
 
     This tool examines the current git diff, extracts changed code,
-    and uses AI to analyze it for quality issues.
+    and prepares structured data with context for the AI to analyze.
+
+    The tool doesn't perform analysis itself - it formats the git diff data
+    and provides analysis instructions which get passed back to the AI model
+    through the Model Context Protocol.
 
     Args:
         workspace_root: The root directory of the workspace/git repository
         path: Optional specific file path to analyze
-        focus_areas: Optional list of quality dimensions to focus on
 
     Returns:
-        Analysis results including issues found and recommendations
+        Structured git diff data with analysis instructions for the AI
     """
-    if focus_areas is None:
-        focus_areas = []
-    logger.info("Starting code quality analysis%s in workspace %s", f" for {path}" if path else "", workspace_root)
-    if focus_areas:
-        logger.info("Focus areas: %s", focus_areas)
+    logger.info("Starting git change analysis%s in workspace %s", f" for {path}" if path else "", workspace_root)
 
     if not workspace_root:
         return {"status": "error", "message": "workspace_root parameter is required"}
@@ -238,6 +310,9 @@ def analyze_code_quality(
     # Get git diff
     logger.debug("Fetching git diff...")
     diff_content, staged_content = get_git_diff(workspace_root, path)
+
+    # Get list of all changed files
+    changed_files = get_changed_files(workspace_root)
 
     # Combine diff and staged content for complete changes
     combined_diff = diff_content
@@ -248,7 +323,7 @@ def analyze_code_quality(
 
     if not combined_diff:
         logger.warning("No changes detected in git diff")
-        return {"status": "no_changes", "message": "No changes detected in the git diff"}
+        return {"status": "no_changes", "message": "No changes detected in the git diff", "file_list": []}
 
     # Parse the diff
     logger.debug("Parsing git diff...")
@@ -256,15 +331,21 @@ def analyze_code_quality(
 
     if not parsed_diff:
         logger.warning("No parseable changes in git diff")
-        return {"status": "no_changes", "message": "No parseable changes detected in the git diff"}
+        return {
+            "status": "no_changes",
+            "message": "No parseable changes detected in the git diff",
+            "file_list": changed_files,
+        }
 
     logger.info("Found %d files with changes to analyze", len(parsed_diff))
 
     # Process each changed file
     analysis_results = {}
+    file_list = []
 
     for filename, diff_info in parsed_diff.items():
         logger.debug("Processing file: %s (status: %s)", filename, diff_info["status"])
+        file_list.append(filename)
 
         # Skip certain files
         if filename.endswith((".lock", ".sum", ".mod", "package-lock.json", "yarn.lock", ".DS_Store")):
@@ -287,13 +368,10 @@ def analyze_code_quality(
 
             # Create a prompt for analysis
             logger.debug("Generating analysis prompt for %s", filename)
-            from ..prompts import analyze_code_prompt
+            from ..prompts import analyze_changes_prompt
 
-            analysis_prompt = analyze_code_prompt(
-                code=modified_code,
-                language=language,
-                original_code=original_code if original_code else None,
-                focus_areas=focus_areas,
+            analysis_prompt = analyze_changes_prompt(
+                code=modified_code, language=language, original_code=original_code if original_code else None
             )
             logger.debug("Generated analysis prompt of size: %d chars", len(analysis_prompt))
 
@@ -302,6 +380,9 @@ def analyze_code_quality(
                 "status": diff_info["status"],
                 "language": language,
                 "analysis_prompt": analysis_prompt,
+                "raw_diff": diff_info["raw_diff"],
+                "original_code": original_code,
+                "modified_code": modified_code,
             }
             logger.info("Successfully analyzed %s", filename)
 
@@ -315,29 +396,29 @@ def analyze_code_quality(
     return {
         "status": "success",
         "file_count": len(analysis_results),
+        "file_list": file_list,
+        "all_changed_files": changed_files,
         "results": analysis_results,
         "instructions": """
-Please analyze the code changes using the provided analysis prompt(s).
-For each file in the results:
+This data contains git changes that you should analyze for code quality issues.
+As an AI model receiving this through MCP, your task is to:
 
-1. Read the analysis_prompt which contains:
-   - The code to analyze
-   - Original code (if available)
-   - Analysis dimensions to consider
-   - Detailed instructions for analysis
+1. Review each changed file:
+   - Examine the raw diff showing the exact changes
+   - Compare the original and modified code
+   - Consider the language and file status (added, modified, deleted)
 
-2. Follow the prompt's format to provide:
-   - Analysis for each relevant dimension
-   - Severity levels for issues found
-   - Line-specific explanations
-   - Concrete improvement recommendations
-   - Final summary of critical issues
+2. For each file, perform the analysis following the provided analysis prompt:
+   - Analyze relevant quality dimensions
+   - Assign severity levels to issues you identify
+   - Provide line-specific explanations
+   - Suggest concrete improvements
 
 3. After analyzing all files, provide:
-   - Overall assessment of code quality
-   - Prioritized list of improvements
-   - Any patterns or systemic issues found
+   - An overall assessment of the code changes
+   - A prioritized list of improvements
+   - Any patterns or systemic issues you've identified
 
-Your analysis should be thorough but focused on actionable improvements.
+Your analysis should be thorough yet focused on actionable improvements.
 """,
     }

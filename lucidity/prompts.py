@@ -8,13 +8,13 @@ from .context import mcp
 
 # Define the base prompt for code analysis
 BASE_ANALYSIS_PROMPT = """
-# Code Quality Analysis
+# Git Change Analysis
 
-You are performing a comprehensive code quality analysis on the provided code.
-Your task is to identify potential quality issues across multiple dimensions and provide
-constructive feedback to improve the code.
+You are examining changes made to code in a git repository.
+Your task is to analyze these changes, identify potential issues, and provide
+constructive feedback to improve the code quality.
 
-## Code to Analyze
+## Changed Code
 
 ```{language}
 {code}
@@ -24,12 +24,12 @@ constructive feedback to improve the code.
 
 ## Analysis Dimensions
 
-Analyze the code for the following quality dimensions:
+Analyze the code changes for the following quality dimensions:
 {dimensions}
 
 ## Instructions
 
-1. For each applicable dimension, identify specific issues in the code
+1. For each applicable dimension, identify specific issues in the changes
 2. Provide a severity level for each issue (Critical, High, Medium, Low)
 3. Explain why each issue is problematic, with reference to specific line numbers
 4. Suggest concrete improvements to address each issue
@@ -55,7 +55,7 @@ Organize your analysis by dimension as follows:
 
 After analyzing all dimensions, provide a concise summary of:
 1. The most critical issues to address
-2. Overall code quality assessment
+2. Overall assessment of the code changes
 3. Key recommendations for improvement
 """
 
@@ -164,22 +164,22 @@ def format_dimensions(selected_dimensions: list[str] | None = None) -> str:
     return formatted
 
 
-def generate_analysis_prompt(
-    code: str, language: str, original_code: str | None = None, selected_dimensions: list[str] | None = None
-) -> str:
-    """Generate a complete analysis prompt for the given code.
+def generate_analysis_prompt(code: str, language: str, original_code: str | None = None) -> str:
+    """Generate a complete analysis prompt for MCP.
+
+    Creates a structured prompt that will be sent back to the AI model
+    through the Model Context Protocol to guide its analysis of git changes.
 
     Args:
-        code: The code to analyze
+        code: The changed code to analyze
         language: The programming language of the code
-        original_code: The original code (if performing diff analysis)
-        selected_dimensions: Specific dimensions to analyze, or None for all
+        original_code: The original code before changes (if performing diff analysis)
 
     Returns:
-        Complete analysis prompt
+        Complete analysis prompt for the MCP
     """
-    # Format the dimensions section
-    dimensions_text = format_dimensions(selected_dimensions)
+    # Format the dimensions section with all dimensions
+    dimensions_text = format_dimensions(None)
 
     # Generate diff section if original code is provided
     diff_section = ""
@@ -192,7 +192,7 @@ def generate_analysis_prompt(
 ```
 
 When analyzing, pay particular attention to changes between the original and new code.
-Identify any regressions, unintended modifications, or improvements.
+Identify any regressions, unintended modifications, or improvements in the git diff.
 """
 
     # Build the complete prompt
@@ -201,19 +201,20 @@ Identify any regressions, unintended modifications, or improvements.
     )
 
 
-@mcp.prompt("analyze_code")
-def analyze_code_prompt(
-    code: str, language: str, original_code: str | None = None, focus_areas: list[str] | None = None
-) -> str:
-    """Generate a prompt for analyzing code quality.
+@mcp.prompt("analyze_changes")
+def analyze_changes_prompt(code: str, language: str, original_code: str | None = None) -> str:
+    """Generate a prompt for analyzing git code changes via MCP.
+
+    This function creates a structured prompt that will be passed back
+    to the AI model through the Model Context Protocol, guiding it to
+    analyze git changes effectively.
 
     Args:
-        code: The code to analyze
+        code: The changed code to analyze
         language: The programming language of the code
-        original_code: The original code for comparison (optional)
-        focus_areas: Specific quality dimensions to focus on (optional)
+        original_code: The original code before changes (optional)
 
     Returns:
-        A formatted prompt for code analysis
+        A formatted prompt for the AI to analyze git changes
     """
-    return generate_analysis_prompt(code, language, original_code, focus_areas)
+    return generate_analysis_prompt(code, language, original_code)

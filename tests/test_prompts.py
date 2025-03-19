@@ -37,9 +37,5 @@ def test_generate_analysis_prompt():
     prompt_with_original = generate_analysis_prompt(code, language, original_code)
     assert original_code in prompt_with_original
     assert "Original Code" in prompt_with_original
-
-    # Prompt with selected dimensions
-    prompt_with_dimensions = generate_analysis_prompt(code, language, selected_dimensions=["complexity", "security"])
-    assert "Unnecessary Complexity" in prompt_with_dimensions
-    assert "Security Vulnerabilities" in prompt_with_dimensions
-    assert "Test Coverage Gaps" not in prompt_with_dimensions
+    assert "Git Change Analysis" in prompt_with_original  # Verify new prompt title
+    assert "changes" in prompt_with_original  # Verify focus on changes

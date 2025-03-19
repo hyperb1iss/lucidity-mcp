@@ -2,7 +2,7 @@
 Tests for tools module.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from lucidity.tools.code_analysis import detect_language, extract_code_from_diff, parse_git_diff
 
@@ -68,23 +68,33 @@ def test_get_git_diff(mock_run):
     """Test getting git diff from repository."""
     from lucidity.tools.code_analysis import get_git_diff
 
-    # Mock the subprocess.run calls
-    mock_process = MagicMock()
-    mock_process.stdout = "/path/to/repo"
-    mock_run.return_value = mock_process
+    # Mock subprocess.run to return some test diff output
+    mock_run.return_value.stdout = "test diff output"
+    mock_run.return_value.returncode = 0
 
-    # Patch os functions
+    # Patch os functions and path checks
     with (
         patch("lucidity.tools.code_analysis.os.getcwd") as mock_getcwd,
         patch("lucidity.tools.code_analysis.os.chdir") as mock_chdir,
+        patch("lucidity.tools.code_analysis.os.path.exists") as mock_exists,
     ):
         mock_getcwd.return_value = "/current/dir"
+        mock_exists.return_value = True  # Simulate .git directory exists
 
         # Call the function
-        get_git_diff("example.py")
+        diff_content, staged_content = get_git_diff("/path/to/repo")
 
         # Verify correct commands were run
-        assert mock_run.call_count >= 3
-        # Check that chdir was called to change to git root and back
+        assert mock_run.call_count >= 2  # Should call git diff and git diff --cached
+
+        # Verify directory changes
         mock_chdir.assert_any_call("/path/to/repo")
         mock_chdir.assert_any_call("/current/dir")
+
+        # Verify git commands
+        calls = mock_run.call_args_list
+        assert any("diff" in str(call) for call in calls)
+        assert any("--cached" in str(call) for call in calls)
+
+        # Verify output
+        assert diff_content == "test diff output" or staged_content == "test diff output"
